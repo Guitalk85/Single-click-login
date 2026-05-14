@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BFC 3.0 — Proposed Landing Flow</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f5f7fa;
+    color: #1f2937;
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+  .page-head {
+    max-width: 1600px;
+    margin: 0 auto 20px;
+  }
+  .page-head h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #111827;
+  }
+  .page-head p {
+    font-size: 14px;
+    color: #6b7280;
+  }
+  .flow-summary {
+    max-width: 1600px;
+    margin: 0 auto 24px;
+    background: #fdfdf8;
+    border: 1px solid #f1ecd6;
+    border-radius: 10px;
+    padding: 14px 20px;
+    font-size: 13px;
+    color: #374151;
+    font-family: ui-monospace, monospace;
+  }
+  .flow-summary strong { color: #43a047; }
+  .flow-summary .label {
+    font-family: -apple-system, sans-serif;
+    font-weight: 600;
+    color: #111827;
+    margin-right: 8px;
+  }
+  .flow-summary .today-line strong { color: #b91c1c; }
+  .steps {
+    max-width: 1600px;
+    margin: 0 auto;
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 20px;
+    align-items: flex-start;
+  }
+  .step {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .step-num {
+    background: #43a047;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .step-num.skip {
+    background: #e5e7eb;
+    color: #9ca3af;
+    text-decoration: line-through;
+  }
+  .step-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+  .step-sub {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 10px;
+    text-align: center;
+    max-width: 300px;
+    line-height: 1.5;
+  }
+  .step-arrow {
+    display: flex;
+    align-items: center;
+    color: #43a047;
+    font-size: 24px;
+    padding-top: 100px;
+    flex: 0 0 auto;
+  }
+  .frame {
+    background: #1a1a1a;
+    border-radius: 14px;
+    padding: 8px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    width: 400px;
+    height: 290px;
+  }
+  .frame .screen {
+    background: white;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+  .mini-topbar {
+    height: 28px;
+    background: #43a047;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    color: white;
+    gap: 8px;
+    font-size: 10px;
+  }
+  .mini-topbar .brand { font-weight: 600; }
+  .mini-topbar .center { flex: 1; text-align: center; opacity: 0.95; }
+  .mini-topbar .right { display: flex; gap: 6px; align-items: center; }
+  .mini-topbar .avatar {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: white; color: #43a047;
+    font-size: 9px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mini-body {
+    display: flex;
+    height: calc(100% - 28px);
+  }
+  .mini-side {
+    width: 70px;
+    background: #43a047;
+    color: white;
+    padding: 6px 0;
+    font-size: 8px;
+  }
+  .mini-side .nav {
+    padding: 4px 6px;
+    opacity: 0.85;
+  }
+  .mini-side .nav.active {
+    background: rgba(255,255,255,0.18);
+    opacity: 1;
+  }
+  .mini-side .group {
+    padding: 4px 6px 2px;
+    font-size: 7px;
+    text-transform: uppercase;
+    opacity: 0.6;
+    letter-spacing: 0.5px;
+  }
+  .mini-main {
+    flex: 1;
+    padding: 10px;
+    background: #f8fafb;
+    overflow: hidden;
+    font-size: 9px;
+  }
+  .mini-banner {
+    background: linear-gradient(90deg, #e8f5e9, #f1f8e9);
+    border: 1px solid #c8e6c9;
+    border-radius: 4px;
+    padding: 5px 7px;
+    font-size: 8px;
+    color: #2e7d32;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .mini-banner .b {
+    background: #43a047; color: white;
+    padding: 1px 4px; border-radius: 2px;
+    font-size: 7px; font-weight: 600;
+  }
+  .mini-section {
+    font-size: 9px;
+    font-weight: 600;
+    color: #374151;
+    margin: 6px 0 5px;
+  }
+  .mini-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+  .mini-kpi {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 5px;
+  }
+  .mini-kpi .lbl {
+    font-size: 7px;
+    color: #6b7280;
+    text-transform: uppercase;
+  }
+  .mini-kpi .val {
+    font-size: 11px;
+    font-weight: 700;
+    color: #111827;
+    margin-top: 1px;
+  }
+  .mini-kpi .sub {
+    font-size: 6.5px;
+    color: #6b7280;
+  }
+  .mini-qa {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+  }
+  .mini-qa .card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 5px;
+  }
+  .mini-qa .ico {
+    width: 16px; height: 16px;
+    background: #e8f5e9;
+    color: #43a047;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    margin-bottom: 3px;
+  }
+  .mini-qa .t {
+    font-size: 8px;
+    font-weight: 600;
+    color: #111827;
+  }
+  .login {
+    height: 100%;
+    background: white;
+    display: flex;
+    flex-direction: column;
+  }
+  .login .header-bar {
+    height: 22px;
+    background: #43a047;
+  }
+  .login .body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .login .logo {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .login .logo .blue { color: #1976d2; }
+  .login .logo .green { color: #43a047; }
+  .login .btn {
+    width: 200px;
+    padding: 7px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: white;
+    font-size: 10px;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .sso {
+    height: 100%;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+  }
+  .sso .url-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    background: #2d2d2d;
+    color: #ccc;
+    padding: 6px 10px;
+    font-size: 9px;
+    font-family: ui-monospace, monospace;
+  }
+  .sso .spinner {
+    width: 28px; height: 28px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #43a047;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sso .txt { font-size: 10px; color: #6b7280; }
+  .splash30 {
+    height: 100%;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .splash30 .big {
+    position: absolute;
+    font-size: 160px;
+    font-weight: 200;
+    color: #eef3f6;
+    z-index: 1;
+  }
+  .splash30 .content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+  }
+  .splash30 .logo {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .splash30 .logo .blue { color: #1976d2; }
+  .splash30 .logo .green { color: #43a047; }
+  .splash30 .tag {
+    background: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    font-size: 9px;
+    margin: 8px 0;
+  }
+  .splash30 .cta {
+    border: 1px solid #43a047;
+    color: #43a047;
+    padding: 5px 14px;
+    border-radius: 14px;
+    font-size: 9px;
+    background: white;
+  }
+  .empty {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .empty-banner {
+    background: #e3f2fd;
+    color: #1565c0;
+    text-align: center;
+    padding: 8px;
+    font-size: 8px;
+  }
+  .empty-body {
+    flex: 1;
+    background: white;
+  }
+  .picker-overlay {
+    position: absolute;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 220px;
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+    padding: 8px;
+    z-index: 5;
+  }
+  .picker-overlay .search {
+    border: 1px solid #43a047;
+    border-radius: 4px;
+    padding: 5px;
+    font-size: 8px;
+    color: #9ca3af;
+    margin-bottom: 6px;
+  }
+  .picker-overlay .item {
+    padding: 4px 5px;
+    font-size: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 3px;
+  }
+  .picker-overlay .item.hover {
+    background: #f0fdf4;
+    color: #43a047;
+  }
+  .picker-overlay .item.current {
+    color: #43a047;
+    font-weight: 600;
+  }
+  .picker-overlay .item.current::before {
+    content: '✓ ';
+  }
+  .picker-overlay .label {
+    font-size: 7px;
+    color: #9ca3af;
+    text-transform: uppercase;
+    padding: 4px 5px 2px;
+    letter-spacing: 0.4px;
+  }
+  .step-tag {
+    display: inline-block;
+    background: #fee2e2;
+    color: #b91c1c;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .step-tag.new {
+    background: #dcfce7;
+    color: #15803d;
+  }
+  .step-tag.same {
+    background: #e0f2fe;
+    color: #075985;
+  }
+  .compare-row {
+    max-width: 1600px;
+    margin: 12px auto 0;
+    padding: 16px 20px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.6;
+  }
+  .compare-row .row-title {
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  .compare-row code {
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+  }
+  .compare-row .today { color: #b91c1c; }
+  .compare-row .new { color: #15803d; font-weight: 600; }
+  .behavior-note {
+    max-width: 1600px;
+    margin: 12px auto 0;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 10px;
+    padding: 14px 20px;
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.6;
+  }
+  .behavior-note .title {
+    font-weight: 600;
+    color: #075985;
+    margin-bottom: 6px;
+  }
+  .behavior-note .persona-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .behavior-note .persona-col {
+    flex: 1;
+    background: white;
+    border: 1px solid #e0f2fe;
+    border-radius: 6px;
+    padding: 10px 14px;
+  }
+  .behavior-note .persona-col h4 {
+    font-size: 12px;
+    color: #111827;
+    margin-bottom: 4px;
+  }
+  .behavior-note .persona-col p {
+    font-size: 12px;
+    color: #6b7280;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>BFC 3.0 — Proposed Landing Flow</h1>
+  <p>One experience for everyone. Last-selected location, restored on login. Dropdown for the rare switch.</p>
+</div>
+
+<div class="flow-summary">
+  <div class="today-line"><span class="label">Today:</span> Login → 3.0 splash → Auth → Empty dashboard → Open dropdown → Select bank → Dashboard loads = <strong>5 clicks</strong></div>
+  <div style="margin-top:6px"><span class="label">Proposed:</span> Login → Auth → Dashboard with last-used bank = <strong>0 extra clicks after auth</strong></div>
+</div>
+
+<div class="steps">
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <span class="step-tag same">Same as today</span>
+    <div class="step-title">Login screen</div>
+    <div class="step-sub">User taps Sign in with Microsoft or Google</div>
+    <div class="frame">
+      <div class="screen">
+        <div class="login">
+          <div class="header-bar"></div>
+          <div class="body">
+            <div class="logo"><span class="blue">Biofuel</span><span class="green">Circle</span></div>
+            <button class="btn">🪟 Sign in with Microsoft</button>
+            <button class="btn">🇬 Sign in with Google</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-arrow">→</div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <span class="step-tag same">Unchanged</span>
+    <div class="step-title">SSO authentication</div>
+    <div class="step-sub">Standard OAuth handoff to Microsoft or Google</div>
+    <div class="frame">
+      <div class="screen">
+        <div class="sso">
+          <div class="url-bar">🔒 login.microsoftonline.com/...</div>
+          <div class="spinner"></div>
+          <div class="txt">Authenticating...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-arrow">→</div>
+
+  <div class="step">
+    <div class="step-num skip">3</div>
+    <span class="step-tag">Removed in 3.0</span>
+    <div class="step-title">3.0 splash (killed)</div>
+    <div class="step-sub">No more interrupt screen. Moved inline as a dismissible banner inside the dashboard.</div>
+    <div class="frame" style="opacity:0.4;filter:grayscale(0.5)">
+      <div class="screen">
+        <div class="splash30">
+          <div class="big">3.0</div>
+          <div class="content">
+            <div class="logo"><span class="blue">Biomass</span> <span class="green">Bank</span></div>
+            <div class="tag">● Smarter biomass.</div>
+            <button class="cta">Get Started ›</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-arrow">→</div>
+
+  <div class="step">
+    <div class="step-num skip">4</div>
+    <span class="step-tag">Removed in 3.0</span>
+    <div class="step-title">Empty dashboard (killed)</div>
+    <div class="step-sub">No more "please select location" dead-end. Bank loads automatically.</div>
+    <div class="frame" style="opacity:0.4;filter:grayscale(0.5)">
+      <div class="screen">
+        <div class="mini-topbar">
+          <span>☰</span>
+          <span class="brand">BiofuelCircle</span>
+          <span class="center">📍 Select Location ▼</span>
+          <span class="right">🔔 <span class="avatar">G</span></span>
+        </div>
+        <div class="empty">
+          <div class="empty-banner">⚠ Please select a pickup location to view deliveries.</div>
+          <div class="empty-body"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-arrow">→</div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <span class="step-tag new">NEW</span>
+    <div class="step-title">Dashboard at last-used bank</div>
+    <div class="step-sub">Auto-loads with the last bank the user worked on. No selection required. 3.0 announcement becomes a dismissible inline banner.</div>
+    <div class="frame">
+      <div class="screen">
+        <div class="mini-topbar">
+          <span>☰</span>
+          <span class="brand">BiofuelCircle</span>
+          <span class="center">📍 Gokavaram, Rajahmundry ▼</span>
+          <span class="right">🔔 <span class="avatar">G</span></span>
+        </div>
+        <div class="mini-body">
+          <div class="mini-side">
+            <div class="group">Ops</div>
+            <div class="nav active">📊 Today</div>
+            <div class="nav">📅 Schedule</div>
+            <div class="nav">📥 Inward</div>
+            <div class="nav">⛽ Fuel</div>
+            <div class="group">Deals</div>
+            <div class="nav">🤝 Aggreg.</div>
+          </div>
+          <div class="mini-main">
+            <div class="mini-banner">
+              <span class="b">3.0</span>
+              <span>Dashboard now opens at your last bank.</span>
+            </div>
+            <div class="mini-section">Today at Gokavaram</div>
+            <div class="mini-kpis">
+              <div class="mini-kpi"><div class="lbl">Target</div><div class="val">3,650</div><div class="sub">11d left</div></div>
+              <div class="mini-kpi"><div class="lbl">Inward</div><div class="val">9 MT</div><div class="sub">today</div></div>
+              <div class="mini-kpi"><div class="lbl">Diesel</div><div class="val">32 L</div><div class="sub">8.55 L/MT</div></div>
+              <div class="mini-kpi"><div class="lbl">Equip</div><div class="val">7/12</div><div class="sub">active</div></div>
+            </div>
+            <div class="mini-section">Quick actions</div>
+            <div class="mini-qa">
+              <div class="card"><div class="ico">📥</div><div class="t">Inward</div></div>
+              <div class="card"><div class="ico">⛽</div><div class="t">Diesel</div></div>
+              <div class="card"><div class="ico">📅</div><div class="t">Schedule</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-arrow">→</div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <span class="step-tag new">Optional</span>
+    <div class="step-title">Switch bank (when needed)</div>
+    <div class="step-sub">Tap the location pill to switch. Recently-used at top, search below. Next login lands on the new selection.</div>
+    <div class="frame">
+      <div class="screen">
+        <div class="mini-topbar">
+          <span>☰</span>
+          <span class="brand">BiofuelCircle</span>
+          <span class="center">📍 Gokavaram, Rajahmundry ▲</span>
+          <span class="right">🔔 <span class="avatar">G</span></span>
+        </div>
+        <div class="picker-overlay">
+          <div class="search">🔍 Search location...</div>
+          <div class="label">Current</div>
+          <div class="item current">Gokavaram, Rajahmundry</div>
+          <div class="label">Recent</div>
+          <div class="item hover">📍 Velanpur, Navsari</div>
+          <div class="item">📍 Mainpuri, Etawah</div>
+          <div class="label">All locations (70)</div>
+          <div class="item">📍 Tanda, Bilaspur</div>
+          <div class="item">📍 Sankhi, Barsana</div>
+        </div>
+        <div class="mini-body" style="opacity:0.25">
+          <div class="mini-side">
+            <div class="group">Ops</div>
+            <div class="nav active">Today</div>
+          </div>
+          <div class="mini-main">
+            <div class="mini-section">Today at Gokavaram</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="compare-row">
+  <div class="row-title">What changed</div>
+  <span class="today">Today: <code>5 clicks · ~15-20 seconds · ends at a dead-end empty screen for everyone</code></span><br>
+  <span class="new">Proposed: <code>1 auth click · lands directly at last-used bank's dashboard</code></span><br>
+  <span style="color:#6b7280; margin-top:6px; display:inline-block">Mechanism: server stores <code>last_active_location_id</code> per user, updated every time they switch banks. Restored on every login. Location pill in top nav available for switching — but is never a gate.</span>
+</div>
+
+<div class="behavior-note">
+  <div class="title">Same UI, different behavior across personas</div>
+  <p>One screen, one mechanism. The 80/20 split is about <em>how often they switch</em>, not what they see.</p>
+  <div class="persona-row">
+    <div class="persona-col">
+      <h4>80% — Field user (WH Manager, Rural Ops)</h4>
+      <p>Always works at one bank. Logs in → lands at their bank → never touches the location pill. Step 4 essentially never happens for them.</p>
+    </div>
+    <div class="persona-col">
+      <h4>20% — Developers / internal team</h4>
+      <p>Most of the time also working in one bank context. Occasionally uses Step 4 to switch banks for testing or debugging. The dropdown shows "Recent" banks at top so common switches are one tap.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
